@@ -1,0 +1,11 @@
+{
+  "operator": "matmul",
+  "subtype": "naive",
+  "description": "Naive un-tiled matrix multiplication (C = A * B). Demonstrates extreme memory-bound bottleneck (I = 0.25 FLOPs/Byte).",
+  "default_params": {
+    "M": 1024,
+    "N": 1024,
+    "K": 1024
+  },
+  "threads_per_block": [16, 16]
+}

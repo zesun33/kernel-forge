@@ -1,0 +1,8 @@
+{
+  "operator": "vector_add",
+  "description": "Element-wise vector addition: C[i] = A[i] + B[i]. Memory-bound reference baseline.",
+  "default_params": {
+    "N": 1048576
+  },
+  "threads_per_block": 256
+}

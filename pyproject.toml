@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kernel-forge"
+version = "0.1.0"
+description = "Flagship Developer CLI & Agent Runtime for GPU Kernel Engineering (CUDA & Triton)"
+readme = "README.md"
+authors = [{ name = "Md Zesun Ahmed Mia", email = "zesun33@users.noreply.github.com" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.scripts]
+forge = "kernel_forge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

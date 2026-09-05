@@ -1,0 +1,24 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Compiled CUDA binaries and objects
+*.o
+*.so
+*.out
+*.exe
+build_out/
+*.d
+
+# OS and editors
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.cursor/

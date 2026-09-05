@@ -1,0 +1,12 @@
+{
+  "operator": "matmul",
+  "subtype": "tiled",
+  "description": "Shared-memory 16x16 tiled matrix multiplication (C = A * B). Multiplies Arithmetic Intensity by 16x over naive GEMM.",
+  "default_params": {
+    "M": 1024,
+    "N": 1024,
+    "K": 1024,
+    "TILE_SIZE": 16
+  },
+  "threads_per_block": [16, 16]
+}
