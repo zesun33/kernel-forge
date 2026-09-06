@@ -3,6 +3,7 @@
 > Flagship Developer CLI & Agent Runtime for GPU Kernel Engineering (CUDA & Triton).
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![CI](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml)
 [![Standard: Strict](https://img.shields.io/badge/engineering%20standard-strict-blueviolet)](#engineering-standard)
 [![Platforms: Linux](https://img.shields.io/badge/platforms-linux-lightgrey)](#verified-on)
 [![CUDA: 12.5](https://img.shields.io/badge/cuda-12.5%20%7C%20sm__86-green)](https://developer.nvidia.com/cuda-toolkit)
@@ -152,7 +153,11 @@ Every command supports `--json` to produce $<150$ tokens of structured JSON for 
 ## 🛡️ Engineering Standard: Strict 6-Gate Verification
 
 ```bash
+# Full verification (with live CUDA kernel execution on GPU 4)
 ./scripts/verify.sh
+
+# Fast / CI verification (headless environments without physical GPUs)
+./scripts/verify.sh --quick
 ```
 
 - **Gate 1 (Spec Lock)**: Verify `pyproject.toml`, `LICENSE`, `README.md`.
