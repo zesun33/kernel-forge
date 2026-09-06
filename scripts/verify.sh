@@ -66,7 +66,11 @@ run_gate_6() {
   printf "\033[1;36mGate 6 — Agent JSON Schema Contract\033[0m\n"
   doctor_json=$(./bin/forge doctor --device 4 --json)
   echo "$doctor_json" | grep -q '"default_device_id": 4' || fail 6 "Doctor JSON missing default_device_id 4"
-  echo "$doctor_json" | grep -q '"peak_fp32_tflops"' || fail 6 "Doctor JSON missing peak_fp32_tflops"
+  if [ "$QUICK" = "1" ]; then
+    echo "$doctor_json" | grep -q '"devices"' || fail 6 "Doctor JSON missing devices array"
+  else
+    echo "$doctor_json" | grep -q '"peak_fp32_tflops"' || fail 6 "Doctor JSON missing peak_fp32_tflops"
+  fi
   pass 6 "Agent JSON output adheres to schema"
 }
 
