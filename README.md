@@ -109,18 +109,18 @@ Output:
 | **Host vs. Device** | CPU is the Host (Manager); GPU is the Device (Massive parallel factory). | PCIe bus transfers are slow; keep data in GPU VRAM as long as possible. |
 | **Kernel** | A function executed in parallel by thousands of GPU threads simultaneously. | The core unit of accelerator software. |
 | **Warp** | A hardware squad of 32 threads executing in strict lockstep (SIMT). | If threads in a warp take divergent branches (`if/else`), performance halves. |
-| **Shared Memory (SRAM)** | On-chip scratchpad memory shared by threads in a block ($\sim 100\text{ KB}$). | $10\times$ faster than global DRAM; key to matrix multiplication tiling. |
+| **Shared Memory (SRAM)** | On-chip scratchpad memory shared by threads in a block (~100 KB). | 10× faster than global DRAM; key to matrix multiplication tiling. |
 | **Coalescing** | Threads in a warp accessing contiguous memory addresses in one trip. | Prevents memory bus stalls and maximizes effective bandwidth. |
-| **FLOP** | Floating Point Operation (e.g. $a \times b + c$ is 2 FLOPs). | Measures total arithmetic work. |
-| **Bandwidth ($B$)** | Rate of data transfer from VRAM to compute cores ($\text{GB/s}$). | 768 GB/s on RTX A5000. |
-| **Arithmetic Intensity ($I$)** | Math operations per byte fetched: $I = \frac{\text{FLOPs}}{\text{Byte}}$. | Determines whether a kernel is memory-bound or compute-bound. |
-| **Knee Point ($I_{\text{knee}}$)** | Ridge point: $I_{\text{knee}} = \frac{P_{\text{peak}}}{B_{\text{peak}}}$. | On RTX A5000: $36.16\text{ FLOPs/Byte}$. Below this, adding ALUs provides zero speedup! |
+| **FLOP** | Floating Point Operation (e.g. `a * b + c` is 2 FLOPs). | Measures total arithmetic work. |
+| **Bandwidth (B)** | Rate of data transfer from VRAM to compute cores (GB/s). | 768 GB/s on RTX A5000. |
+| **Arithmetic Intensity (I)** | Math operations per byte fetched: `I = FLOPs / Byte`. | Determines whether a kernel is memory-bound or compute-bound. |
+| **Knee Point (I_knee)** | Ridge point: `I_knee = P_peak / B_peak`. | On RTX A5000: 36.16 FLOPs/Byte. Below this, adding ALUs provides zero speedup! |
 
 ---
 
 ## 🤖 Agent-First Interface (`--json`)
 
-Every command supports `--json` to produce $<150$ tokens of structured JSON for AI IDEs (**Cursor**, **Windsurf**, **GitHub Copilot / OpenAI Codex**, **Claude Code**, **Google Antigravity**, **OpenCode**, **Cline**):
+Every command supports `--json` to produce < 150 tokens of structured JSON for AI IDEs (**Cursor**, **Windsurf**, **GitHub Copilot / OpenAI Codex**, **Claude Code**, **Google Antigravity**, **OpenCode**, **Cline**):
 
 ```json
 {
