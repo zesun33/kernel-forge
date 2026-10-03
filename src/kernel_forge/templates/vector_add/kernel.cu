@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <cuda_runtime.h>
 
 #define CUDA_CHECK(call) \
@@ -20,7 +21,7 @@ __global__ void vector_add_kernel(const float* __restrict__ A, const float* __re
 
 int main(int argc, char** argv) {
     int N = (argc > 1) ? atoi(argv[1]) : 1048576;
-    int device_id = (argc > 2) ? atoi(argv[2]) : 4;
+    int device_id = (argc > 2) ? atoi(argv[2]) : 0;
     int iters = (argc > 3) ? atoi(argv[3]) : 20;
 
     CUDA_CHECK(cudaSetDevice(device_id));
@@ -71,8 +72,8 @@ int main(int argc, char** argv) {
 
     CUDA_CHECK(cudaMemcpy(h_C, d_C, bytes, cudaMemcpyDeviceToHost));
     bool valid = true;
-    for (int i = 0; i < 100; i++) {
-        if (abs(h_C[i] - 3.0f) > 1e-4) {
+    for (int i = 0; i < N; i++) {
+        if (!isfinite(h_C[i]) || fabsf(h_C[i] - 3.0f) > 1e-4) {
             valid = false;
             break;
         }
@@ -89,5 +90,5 @@ int main(int argc, char** argv) {
     free(h_B);
     free(h_C);
 
-    return 0;
+    return valid ? 0 : 1;
 }

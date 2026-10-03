@@ -1,6 +1,7 @@
 """CUDA compilation (nvcc) and benchmark execution runner."""
 
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -76,12 +77,14 @@ def compile_cuda_kernel(
 def run_benchmark(
     source_path: str,
     operator: Optional[str] = None,
-    device_id: int = 4,
+    device_id: Optional[int] = None,
     iters: int = 20,
     problem_params: Optional[List[int]] = None,
     arch: Optional[str] = None,
 ) -> BenchmarkResult:
     """Compile, execute, and profile a CUDA kernel."""
+    if iters <= 0 or (problem_params and any(value <= 0 for value in problem_params)):
+        raise ValueError("Iterations and problem dimensions must be positive")
     device = get_target_device(device_id)
     if not device:
         raise RuntimeError(f"GPU device {device_id} not detected.")
@@ -105,7 +108,7 @@ def run_benchmark(
             elif inferred_op in ("matmul", "gemm"):
                 exec_cmd.extend(["1024", "1024", "1024"])
 
-        exec_cmd.extend([str(device_id), str(iters)])
+        exec_cmd.extend([str(device.index), str(iters)])
 
         exec_res = subprocess.run(exec_cmd, capture_output=True, text=True)
         if exec_res.returncode != 0:
@@ -125,8 +128,10 @@ def run_benchmark(
             )
 
         latencies: List[float] = data.get("latencies_ms", [])
-        if not latencies:
-            raise RuntimeError("No latency measurements collected.")
+        if not latencies or any(not math.isfinite(value) or value <= 0 for value in latencies):
+            raise RuntimeError("Missing or invalid latency measurements.")
+        if data.get("valid") is not True:
+            raise RuntimeError("Kernel correctness validation did not pass.")
 
         latencies_sorted = sorted(latencies)
         n = len(latencies_sorted)
@@ -138,7 +143,7 @@ def run_benchmark(
         op_name = inferred_op or data.get("operator", "generic")
         subtype = data.get("subtype")
         params = data.get("params", {})
-        valid = data.get("valid", True)
+        valid = data["valid"]
 
         is_tiled = subtype == "tiled"
         tile_sz = params.get("TILE", 16)

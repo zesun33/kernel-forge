@@ -94,7 +94,7 @@ def analyze_roofline(
     if arithmetic_intensity < device.knee_point_flops_per_byte:
         regime = "memory_bound"
         bottleneck = (
-            f"DRAM Memory Bandwidth saturated ({achieved_bw_gbps} GB/s of {device.peak_bandwidth_gbps} GB/s peak). "
+            f"DRAM Memory Bandwidth model: {achieved_bw_gbps} GB/s of modeled traffic versus {device.peak_bandwidth_gbps} GB/s reference peak. "
             f"Arithmetic Intensity ({arithmetic_intensity:.3f} FLOPs/Byte) is below the hardware knee point ({device.knee_point_flops_per_byte:.1f})."
         )
         recommendations = [
@@ -105,7 +105,7 @@ def analyze_roofline(
     else:
         regime = "compute_bound"
         bottleneck = (
-            f"Compute Core throughput bound. Arithmetic intensity ({arithmetic_intensity:.2f} FLOPs/Byte) "
+            f"Modeled compute ceiling. Arithmetic intensity ({arithmetic_intensity:.2f} FLOPs/Byte) "
             f"exceeds knee point ({device.knee_point_flops_per_byte:.1f})."
         )
         recommendations = [

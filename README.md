@@ -6,99 +6,44 @@
 [![CI](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml)
 [![Standard: Strict](https://img.shields.io/badge/engineering%20standard-strict-blueviolet)](#engineering-standard)
 [![Platforms: Linux](https://img.shields.io/badge/platforms-linux-lightgrey)](#verified-on)
-[![CUDA: 12.5](https://img.shields.io/badge/cuda-12.5%20%7C%20sm__86-green)](https://developer.nvidia.com/cuda-toolkit)
-[![Hardware: 8x RTX A5000](https://img.shields.io/badge/hardware-8x%20NVIDIA%20RTX%20A5000-orange)](#hardware-support)
+[![Reference CUDA: 12.5](https://img.shields.io/badge/Reference%20CUDA-12.5-green)](https://developer.nvidia.com/cuda-toolkit)
+[![GPU selection: CUDA visible](https://img.shields.io/badge/GPU%20selection-CUDA%20visible-orange)](#quick-start)
 [![Maintained by zesun33](https://img.shields.io/badge/maintained%20by-zesun33-0a0a0a)](https://github.com/zesun33)
 
 Part of the **AI Agent Tooling for Hardware & ML Systems** portfolio by [Md Zesun Ahmed Mia](https://github.com/zesun33).
 
 ---
 
-## ⚡ Quick Tour: See It in Action
+## Quick start
 
-`kernel-forge` bridges raw CUDA C++ and Python Triton kernels with the **Roofline Performance Model**, providing both humans and AI coding agents with instant, mathematical feedback on memory vs. compute saturation.
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 1. HARDWARE PROBE (forge doctor)                                            │
-│    Discovers all 8x NVIDIA RTX A5000 GPUs on host, NVCC 12.5 toolchain,     │
-│    and theoretical compute peaks (27.8 TFLOPS FP32, 768 GB/s GDDR6, Iknee). │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ targets approved cluster (GPU 4)
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 2. MICROBENCHMARK RUNNER (forge bench)                                      │
-│    Compiles with nvcc -O3 -arch=sm_86 and runs deterministic iterations     │
-│    with CUDA events, warmup passes, and latency percentiles (p50, p90, p99).│
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ calculates arithmetic intensity
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 3. ROOFLINE ANALYZER (forge profile --json)                                 │
-│    Calculates Arithmetic Intensity (I = FLOPs / Byte), classifies regime    │
-│    (MEMORY-BOUND vs COMPUTE-BOUND), and provides actionable optimization!   │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 1. Probe GPU Cluster (`forge doctor`)
+Python 3.9+ is required. Benchmarking additionally requires an NVIDIA driver, CUDA-capable GPU, and `nvcc` in `PATH`. Hardware discovery uses the CUDA driver API; `nvidia-smi` is optional host metadata. Install from the checkout or use `./bin/forge` directly:
 
 ```bash
-./bin/forge doctor
+python3 -m pip install .
+forge doctor --json
+forge init matmul --out my-kernel
+forge profile my-kernel/matmul_kernel.cu --json
 ```
 
-Output:
-```text
-=== kernel-forge Doctor: GPU Hardware & Toolchain ===
-  ✓ NVCC: Cuda compilation tools, release 12.5, V12.5.82 (/usr/local/cuda/bin/nvcc)
-
-  Detected 8 GPU device(s) on host:
-  ---------------------------------------------------------------------------
-  ID   Name                 Arch     VRAM (MiB)   Peak TFLOPS    Peak BW    Knee Point
-  ---------------------------------------------------------------------------
-  0    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  1    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  2    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  3    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  4    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16    [TARGET]
-  5    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  6    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  7    NVIDIA RTX A5000     sm_86    23028        27.77          768.0      36.16   
-  ---------------------------------------------------------------------------
-  Default benchmark device: GPU 4 (Approved cluster: 4, 5, 6, 7)
-```
-
-### 2. Scaffold a Verified Kernel (`forge init`)
+The default device is CUDA-visible ordinal **0**. `--device N` overrides the local `FORGE_DEVICE` environment variable. Invalid selections fail instead of silently choosing another device.
 
 ```bash
-./bin/forge init matmul --out src/my_kernels
+# Single-GPU laptop: visible device 0 is the default.
+./bin/forge doctor --json
+
+# Local cluster example: expose host GPU 4, which CUDA renumbers to visible 0.
+CUDA_VISIBLE_DEVICES=4 ./bin/forge bench src/kernel_forge/templates/matmul_tiled/kernel.cu --json
+
+# Expose host GPUs 4 and 5, then choose the second visible GPU.
+CUDA_VISIBLE_DEVICES=4,5 ./bin/forge doctor --device 1 --json
+
+# Persist a local preference in your shell, not in this repository.
+export FORGE_DEVICE=0
 ```
 
-Creates a complete, compilable 2D Shared-Memory Tiled matrix multiplication kernel ready for benchmarking.
+`device.index` is the ordinal passed to `cudaSetDevice`. `device.physical_index` is optional host information from `nvidia-smi`; it is not an execution argument. Numeric, UUID-based, and reordered `CUDA_VISIBLE_DEVICES` masks are resolved by CUDA itself. With no visible GPU, `doctor` reports `default_device_id: null`; benchmarking fails with a diagnostic.
 
-### 3. Roofline Profile with Actionable Bottleneck Analysis (`forge profile`)
-
-```bash
-./bin/forge profile src/kernel_forge/templates/matmul_tiled/kernel.cu --device 4
-```
-
-Output:
-```text
-=== kernel-forge Roofline Profile ===
-  Operator:              matmul (tiled)
-  Problem Size:          {'M': 1024, 'N': 1024, 'K': 1024, 'TILE': 16}
-  Arithmetic Intensity:  3.9690 FLOPs/Byte
-  Hardware Knee Point:   36.16 FLOPs/Byte
-  Regime Classification: MEMORY_BOUND
-  Achieved vs Peak:      2.198 of 27.8 TFLOPS (72.1% of attainable memory ceiling)
-
-  Primary Bottleneck:
-    DRAM Memory Bandwidth saturated (553.86 GB/s of 768.0 GB/s peak). Arithmetic Intensity (3.969 FLOPs/Byte) is below the hardware knee point (36.2).
-
-  Optimization Recommendations:
-    1. Cache input matrices into fast On-Chip Shared Memory (SRAM tiling)
-    2. Ensure global memory loads are 128-bit coalesced (float4 / int4)
-    3. Fuse subsequent activation (ReLU, bias, scale) to avoid round-tripping to DRAM
-```
+Latency and throughput are measured by the CUDA templates. Roofline classifications use modeled memory traffic and theoretical reference specifications, not hardware-counter measurements of DRAM saturation. Unknown GPU models currently use fallback estimates (20 TFLOP/s and 500 GB/s), so interpret their ceilings as illustrative. The reference setup used an RTX A5000 with CUDA 12.5; other GPUs are selected by their discovered compute capability.
 
 ---
 
@@ -120,13 +65,14 @@ Output:
 
 ## 🤖 Agent-First Interface (`--json`)
 
-Every command supports `--json` to produce < 150 tokens of structured JSON for AI IDEs (**Cursor**, **Windsurf**, **GitHub Copilot / OpenAI Codex**, **Claude Code**, **Google Antigravity**, **OpenCode**, **Cline**):
+Each subcommand supports `--json` to produce structured JSON for AI IDEs (**Cursor**, **Windsurf**, **GitHub Copilot / OpenAI Codex**, **Claude Code**, **Google Antigravity**, **OpenCode**, **Cline**):
 
 ```json
 {
   "status": "success",
   "device": {
-    "index": 4,
+    "index": 0,
+    "physical_index": 4,
     "name": "NVIDIA RTX A5000",
     "compute_capability": "sm_86",
     "peak_fp32_tflops": 27.77,
@@ -153,8 +99,8 @@ Every command supports `--json` to produce < 150 tokens of structured JSON for A
 ## 🛡️ Engineering Standard: Strict 6-Gate Verification
 
 ```bash
-# Full verification (with live CUDA kernel execution on GPU 4)
-./scripts/verify.sh
+# Full verification on a chosen host GPU (visible device 0)
+CUDA_VISIBLE_DEVICES=4 ./scripts/verify.sh
 
 # Fast / CI verification (headless environments without physical GPUs)
 ./scripts/verify.sh --quick
@@ -162,8 +108,8 @@ Every command supports `--json` to produce < 150 tokens of structured JSON for A
 
 - **Gate 1 (Spec Lock)**: Verify `pyproject.toml`, `LICENSE`, `README.md`.
 - **Gate 2 (Static Quality)**: Bytecode syntax verification across all modules.
-- **Gate 3 (Unit Tests)**: 10/10 unit tests for hardware specs, CLI parsing, and Roofline math.
-- **Gate 4 (Hardware Integration)**: Live compilation and execution of baseline kernels on GPU 4.
+- **Gate 3 (Unit Tests)**: Portable regression tests for device selection, CLI parsing, and Roofline math.
+- **Gate 4 (Hardware Integration)**: Live compilation and execution of baseline kernels on the selected CUDA-visible GPU; `--quick` explicitly skips execution.
 - **Gate 5 (Packaging & CLI)**: Executable permissions and `--help` snapshot tests.
 - **Gate 6 (Agent Contract)**: Schema validation of JSON outputs.
 

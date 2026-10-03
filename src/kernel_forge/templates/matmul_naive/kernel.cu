@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     int M = (argc > 1) ? atoi(argv[1]) : 1024;
     int N = (argc > 2) ? atoi(argv[2]) : 1024;
     int K = (argc > 3) ? atoi(argv[3]) : 1024;
-    int device_id = (argc > 4) ? atoi(argv[4]) : 4;
+    int device_id = (argc > 4) ? atoi(argv[4]) : 0;
     int iters = (argc > 5) ? atoi(argv[5]) : 10;
 
     CUDA_CHECK(cudaSetDevice(device_id));
@@ -82,8 +82,8 @@ int main(int argc, char** argv) {
     CUDA_CHECK(cudaMemcpy(h_C, d_C, bytes_C, cudaMemcpyDeviceToHost));
     bool valid = true;
     float expected = 0.25f * K;
-    for (int i = 0; i < 50; i++) {
-        if (fabs(h_C[i] - expected) > 1e-2) {
+    for (int i = 0; i < M * N; i++) {
+        if (!isfinite(h_C[i]) || fabs(h_C[i] - expected) > 1e-2) {
             valid = false;
             break;
         }
@@ -100,5 +100,5 @@ int main(int argc, char** argv) {
     free(h_B);
     free(h_C);
 
-    return 0;
+    return valid ? 0 : 1;
 }

@@ -45,14 +45,14 @@ run_gate_3() {
 }
 
 run_gate_4() {
-  printf "\033[1;36mGate 4 — Hardware Integration (RTX A5000 GPU 4)\033[0m\n"
+  printf "\033[1;36mGate 4 — Hardware Integration (CUDA-visible device)\033[0m\n"
   if [ "$QUICK" = "1" ]; then
-    pass 4 "Hardware execution skipped (--quick)"
+    printf "  SKIP Gate 4: Hardware execution (--quick)\n"
     return 0
   fi
-  ./bin/forge bench src/kernel_forge/templates/vector_add/kernel.cu --device 4 --iters 5 --json > /dev/null
-  ./bin/forge bench src/kernel_forge/templates/matmul_tiled/kernel.cu --device 4 --iters 5 --json > /dev/null
-  pass 4 "Real CUDA kernels compiled with nvcc and executed on GPU 4"
+  ./bin/forge bench src/kernel_forge/templates/vector_add/kernel.cu --iters 5 --json > /dev/null
+  ./bin/forge bench src/kernel_forge/templates/matmul_tiled/kernel.cu --iters 5 --json > /dev/null
+  pass 4 "Real CUDA kernels compiled with nvcc and executed on the selected visible device"
 }
 
 run_gate_5() {
@@ -64,8 +64,8 @@ run_gate_5() {
 
 run_gate_6() {
   printf "\033[1;36mGate 6 — Agent JSON Schema Contract\033[0m\n"
-  doctor_json=$(./bin/forge doctor --device 4 --json)
-  echo "$doctor_json" | grep -q '"default_device_id": 4' || fail 6 "Doctor JSON missing default_device_id 4"
+  doctor_json=$(./bin/forge doctor --json)
+  echo "$doctor_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert {"default_device_id", "requested_device_id", "devices"} <= d.keys(); assert d["default_device_id"] is None or any(g["index"] == d["default_device_id"] for g in d["devices"])' || fail 6 "Doctor device selection contract failed"
   if [ "$QUICK" = "1" ]; then
     echo "$doctor_json" | grep -q '"devices"' || fail 6 "Doctor JSON missing devices array"
   else

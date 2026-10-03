@@ -1,46 +1,44 @@
-"""Unit tests for hardware discovery and theoretical limit calculations."""
-
+"""Portable discovery and selection regression tests (no GPU required)."""
+import os
 import unittest
-from kernel_forge.hardware import (
-    GPU_DATABASE,
-    GpuDevice,
-    get_nvcc_info,
-    get_target_device,
-    query_gpus,
-)
+from unittest.mock import patch
+from kernel_forge.hardware import query_gpus, get_target_device, configured_device_id
 
 
 class TestHardware(unittest.TestCase):
-    def test_gpu_database_specs(self):
-        a5000 = GPU_DATABASE["RTX A5000"]
-        self.assertEqual(a5000["compute_capability"], "sm_86")
-        self.assertEqual(a5000["peak_fp32_tflops"], 27.77)
-        self.assertEqual(a5000["peak_bandwidth_gbps"], 768.0)
-        self.assertAlmostEqual(a5000["knee_point_flops_per_byte"], 36.16, places=1)
+    def setUp(self):
+        self.environment = patch.dict(os.environ, {"FORGE_DEVICE": "0"})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
 
-    def test_nvcc_info(self):
-        info = get_nvcc_info()
-        self.assertIn("installed", info)
-        if info["installed"]:
-            self.assertIsNotNone(info["path"])
-            self.assertIn("12", info["version"])
+    def visible(self, index=0, name="NVIDIA RTX A5000", bus="0000:87:00.0"):
+        return {"index": index, "name": name, "compute_capability": "sm_86",
+                "memory_mib": 23028, "clock_mhz": 1695, "pci_bus_id": bus}
 
-    def test_query_gpus(self):
-        devices = query_gpus()
-        if devices:
-            self.assertGreaterEqual(len(devices), 1)
-            d0 = devices[0]
-            self.assertIsInstance(d0, GpuDevice)
-            self.assertIn("RTX", d0.name)
-            self.assertEqual(d0.compute_capability, "sm_86")
+    def test_visible_ordinal_is_independent_of_host_metadata(self):
+        with patch("kernel_forge.hardware._query_cuda_devices", return_value=[self.visible()]), \
+             patch("kernel_forge.hardware.shutil.which", return_value=None):
+            devices = query_gpus()
+            self.assertEqual(devices[0].index, 0)
+            self.assertIsNone(devices[0].physical_index)
+            self.assertEqual(get_target_device().compute_capability, "sm_86")
 
-    def test_target_device_default_4(self):
-        dev = get_target_device(4)
-        if dev:
-            self.assertEqual(dev.index, 4)
-            self.assertEqual(dev.compute_capability, "sm_86")
-            self.assertAlmostEqual(dev.peak_fp32_tflops, 27.77, places=1)
+    def test_explicit_invalid_selection_does_not_fall_back(self):
+        with patch("kernel_forge.hardware._query_cuda_devices", return_value=[self.visible()]), \
+             patch("kernel_forge.hardware.shutil.which", return_value=None):
+            with self.assertRaisesRegex(ValueError, "unavailable"):
+                get_target_device(4)
 
+    def test_local_default_and_explicit_override(self):
+        with patch.dict(os.environ, {"FORGE_DEVICE": "1"}):
+            self.assertEqual(configured_device_id(), 1)
+            self.assertEqual(configured_device_id(0), 0)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_missing_driver_is_reported_as_no_devices(self):
+        with patch("kernel_forge.hardware._query_cuda_devices", side_effect=OSError("missing driver")):
+            self.assertEqual(query_gpus(), [])
+            self.assertIsNone(get_target_device())
+
+    def test_negative_selection_rejected(self):
+        with self.assertRaises(ValueError):
+            get_target_device(-1)

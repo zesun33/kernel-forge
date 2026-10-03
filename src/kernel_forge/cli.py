@@ -6,18 +6,19 @@ import os
 import shutil
 import sys
 from typing import List, Optional
-from kernel_forge.hardware import get_nvcc_info, get_target_device, query_gpus
+from kernel_forge.hardware import configured_device_id, get_nvcc_info, get_target_device, query_gpus
+from kernel_forge import __version__
 from kernel_forge.runner import run_benchmark
 
 
-def print_doctor_human(gpus, nvcc_info, target_id=4):
+def print_doctor_human(gpus, nvcc_info, target_id=None):
     print("\n\033[1;36m=== kernel-forge Doctor: GPU Hardware & Toolchain ===\033[0m")
     if nvcc_info["installed"]:
         print(f"  \033[1;32m✓\033[0m NVCC: {nvcc_info['version']} ({nvcc_info['path']})")
     else:
         print("  \033[1;31m✗\033[0m NVCC: Not detected in PATH")
 
-    print(f"\n  Detected {len(gpus)} GPU device(s) on host:")
+    print(f"\n  Detected {len(gpus)} CUDA-visible GPU device(s):")
     print("  " + "-" * 75)
     print(f"  {'ID':<4} {'Name':<20} {'Arch':<8} {'VRAM (MiB)':<12} {'Peak TFLOPS':<14} {'Peak BW':<10} {'Knee Point'}")
     print("  " + "-" * 75)
@@ -28,18 +29,22 @@ def print_doctor_human(gpus, nvcc_info, target_id=4):
             f"{g.peak_fp32_tflops:<14.2f} {g.peak_bandwidth_gbps:<10.1f} {g.knee_point_flops_per_byte:<8.2f}{marker}"
         )
     print("  " + "-" * 75)
-    print(f"  Default benchmark device: GPU {target_id} (Approved cluster: 4, 5, 6, 7)\n")
+    print(f"  Selected CUDA-visible device: {target_id}\n")
 
 
 def cmd_doctor(args):
     gpus = query_gpus()
     nvcc_info = get_nvcc_info()
-    target_id = getattr(args, "device", 4)
+    requested_id = configured_device_id(args.device)
+    target = get_target_device(requested_id)
+    target_id = target.index if target else None
 
     if args.json:
         data = {
             "nvcc": nvcc_info,
             "default_device_id": target_id,
+            "requested_device_id": requested_id,
+            "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
             "gpu_count": len(gpus),
             "devices": [g.to_dict() for g in gpus],
         }
@@ -130,12 +135,12 @@ def build_parser():
         prog="forge",
         description="Flagship Developer CLI & Agent Runtime for GPU Kernel Engineering (CUDA & Triton)",
     )
-    parser.add_argument("-v", "--version", action="version", version="kernel-forge 0.1.0")
+    parser.add_argument("-v", "--version", action="version", version=f"kernel-forge {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # doctor
     p_doc = subparsers.add_parser("doctor", help="Probe host GPU devices, compute limits, and nvcc toolchain")
-    p_doc.add_argument("--device", type=int, default=4, help="Target device ID (default: 4, cluster: 4, 5, 6, 7)")
+    p_doc.add_argument("--device", type=int, default=None, help="CUDA-visible device ID (default: FORGE_DEVICE or 0)")
     p_doc.add_argument("--json", action="store_true", help="Output machine-readable JSON")
 
     # init
@@ -147,7 +152,7 @@ def build_parser():
     # bench
     p_bench = subparsers.add_parser("bench", help="Compile and benchmark CUDA kernel with latency percentiles")
     p_bench.add_argument("file", help="Path to .cu kernel source file")
-    p_bench.add_argument("--device", type=int, default=4, help="GPU device ID (default: 4)")
+    p_bench.add_argument("--device", type=int, default=None, help="CUDA-visible device ID (default: FORGE_DEVICE or 0)")
     p_bench.add_argument("--iters", type=int, default=20, help="Benchmark iterations (default: 20)")
     p_bench.add_argument("--op", choices=["vector_add", "matmul"], default=None, help="Operator override")
     p_bench.add_argument("--arch", default=None, help="Target architecture (default: device capability e.g. sm_86)")
@@ -157,7 +162,7 @@ def build_parser():
     # profile
     p_prof = subparsers.add_parser("profile", help="Run Roofline arithmetic intensity & bottleneck analysis")
     p_prof.add_argument("file", help="Path to .cu kernel source file")
-    p_prof.add_argument("--device", type=int, default=4, help="GPU device ID (default: 4)")
+    p_prof.add_argument("--device", type=int, default=None, help="CUDA-visible device ID (default: FORGE_DEVICE or 0)")
     p_prof.add_argument("--iters", type=int, default=15, help="Benchmark iterations (default: 15)")
     p_prof.add_argument("--op", choices=["vector_add", "matmul"], default=None, help="Operator override")
     p_prof.add_argument("--arch", default=None, help="Target architecture (default: device capability)")
@@ -174,6 +179,13 @@ def main():
         sys.exit(0)
 
     args = parser.parse_args()
+    try:
+        dispatch(args, parser)
+    except (ValueError, RuntimeError) as error:
+        parser.exit(1, f"forge: {error}\n")
+
+
+def dispatch(args, parser):
     if args.command == "doctor":
         cmd_doctor(args)
     elif args.command == "init":
