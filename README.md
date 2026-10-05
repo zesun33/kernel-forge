@@ -1,6 +1,27 @@
 # kernel-forge
 
-> Flagship Developer CLI & Agent Runtime for GPU Kernel Engineering (CUDA & Triton).
+<!-- BEGIN GENERATED PROJECT GUIDE -->
+
+## Purpose and first steps
+
+Generate CUDA kernel templates and inspect correctness, timing, and modeled Roofline limits.
+
+**Who it is for:** CUDA developers learning or automating kernel generation and performance analysis.
+
+**First task:** Install from the checkout and run `forge doctor --json` before generating a kernel.
+
+**What to expect:** CUDA-visible device information; generated templates can then be checked and timed on your GPU.
+
+**Current scope:** A Python CLI with CUDA templates and modeled Roofline analysis. Actual execution requires a CUDA GPU/toolkit; modeled limits are separate from measured timings.
+
+**Start here:** [CLI Quickstart](README.md#quick-start).
+
+**Related projects:** [cuda-gemm-optimization](https://github.com/zesun33/cuda-gemm-optimization), [cuda-memory-benchmark](https://github.com/zesun33/cuda-memory-benchmark).
+
+[Choose another project](https://github.com/zesun33/personal-projects/blob/main/GETTING_STARTED.md).
+<!-- END GENERATED PROJECT GUIDE -->
+
+> CLI for CUDA kernel templates, checked execution, and modeled GPU performance analysis.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/zesun33/kernel-forge/actions/workflows/ci.yml)
